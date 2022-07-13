@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0 user-scalable=no"/>
+  <title>video</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      word-break: break-all;
+      word-wrap: break-word;
+    }
+
+    video {
+      width: 70%;
+    }
+
+    #list {
+      width: 100%;
+      word-break: break-all;
+      word-wrap: break-word;
+    }
+
+    img {
+      width: 100%;
+    }
+  </style>
+</head>
+<body>
+<video src="./video/2.mp4" playsinline autoplay controls></video>
+<div>
+  <button id="button">截取</button>
+  <button id="btn">打印</button>
+  <button id="ave-btn">平均时间</button>
+  <button id="send-btn">发送数据</button>
+</div>
+<canvas id="mainCanvas"></canvas>
+<div>
+  <span>平均时间：</span>
+  <div id="ave-time"></div>
+</div>
+
+<div>
+  <span>图片数据：</span>
+  <div id="list"></div>
+</div>
+<div>
+  <span>时间：</span>
+  <div id="time"></div>
+</div>
+
+<script>
+const ws = new WebSocket("wss://172.16.32.215/ws")
+const button = document.querySelector('#button')
+const btn = document.querySelector('#btn')
+const aveBtn = document.querySelector('#ave-btn')
+const video = document.querySelector('video')
+const mCanvas = document.querySelector('#mainCanvas');
+const list = document.querySelector('#list');
+const time = document.querySelector('#time');
+const aveTime = document.querySelector('#ave-time');
+const sendBtn = document.querySelector('#send-btn');
+const imgList = []
+const timer = []
+let myReq = ''
+let count = 0
+
+ws.onopen = function (e) {
+  console.log("链接成功", e);
+}
+
+ws.onmessage = function (e) {
+  console.log("消息", e.data);
+}
+ws.onerror = function (e) {
+  console.log("错误", e);
+}
+
+ws.onclose = function (e) {
+  console.log("关闭", e);
+}
+
+button.onclick = function () {
+  crateImg()
+}
+
+sendBtn.onclick = function () {
+  crateImg()
+  console.log(imgList)
+  ws.send(imgList[count])
+  count += 1
+}
+
+
+btn.onclick = function () {
+  list.innerText = imgList
+  time.innerText = timer
+}
+
+aveBtn.onclick = function () {
+  window.cancelAnimationFrame(myReq)
+  const len = timer.length
+  const sum = timer.reduce((acc, cur) => {
+    return acc + cur
+  }, 0)
+  const aveTimer = sum / len
+  aveTime.innerText = aveTimer
+}
+
+video.addEventListener('ended', function () {
+  //结束
+  window.cancelAnimationFrame(myReq)
+  const len = timer.length
+  const sum = timer.reduce((acc, cur) => {
+    return acc + cur
+  }, 0)
+  const aveTimer = sum / len
+  aveTime.innerText = aveTimer
+  list.innerText = imgList
+  time.innerText = timer
+  console.log("播放结束");
+}, false);
+
+function crateImg() {
+  // const img = document.createElement('img')
+  let canvas = document.createElement("canvas");
+  // let span = document.createElement("span");
+  const w = video.offsetWidth;
+  const h = w * video.videoHeight / video.videoWidth; // 计算一下比例
+  canvas.width = w;
+  canvas.height = h;
+  const start = Date.now()
+  canvas.getContext('2d').drawImage(video, 0, 0, w, h);
+  const timestamp = Date.now()
+  const end = Date.now()
+  const base64Url = canvasDataUrl(canvas)
+  const blob = base64ToBlob(base64Url)
+  console.log(blob)
+  const data = {
+    timestamp,
+    base64: base64Url
+  }
+  imgList.push(JSON.stringify(data))
+  timer.push(end - start)
+  // span.innerText = end - start
+  // img.src = dataURL
+  // list.appendChild(img)
+  // list.appendChild(span)
+  canvas = null
+  if(timestamp - count >= 3000) {
+    count = timestamp
+    ws.send(JSON.stringify(data))
+  }
+  // myReq = window.requestAnimationFrame(crateImg)
+}
+
+// window.requestAnimationFrame(crateImg)
+
+function convertCanvasToImage(canvas) {
+  var image = new Image()
+  image.src = canvas.toDataURL("image/png", 1.0)
+  return image
+}
+
+function canvasDataUrl(canvas) {
+  return canvas.toDataURL("image/jpeg", 0.3)
+}
+
+function base64ToBlob(base64Data) {
+  let arr = base64Data.split(','),
+    fileType = arr[0].match(/:(.*?);/)[1],
+    bstr = atob(arr[1]),
+    l = bstr.length,
+    u8Arr = new Uint8Array(l);
+
+  while (l--) {
+    u8Arr[l] = bstr.charCodeAt(l);
+  }
+  return new Blob([u8Arr], {
+    type: fileType
+  })
+}
+
+function convertBase64UrlToBlob(urlData, type) {
+  const bytes = window.atob(urlData.split(',')[1])        //去掉url的头，并转换为byte
+  //处理异常,将ascii码小于0的转换为大于0
+  const ab = new ArrayBuffer(bytes.length)
+  const ia = new Uint8Array(ab)
+  for (let i = 0; i < bytes.length; i++) {
+    ia[i] = bytes.charCodeAt(i)
+  }
+  return new Blob([ab], { type: 'image/' + type })
+}
+
+
+</script>
+</body>
+</html>

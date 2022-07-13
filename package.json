@@ -5,7 +5,9 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "dev": "http-server -S -C cert.pem -o"
+    "start": "http-server",
+    "dev": "http-server -S -C cert.pem -o",
+    "live": "concurrently --names 'wds,localtunnel' --prefix-colors 'green,yellow' --kill-others-on-fail \"npm start\" \"lt --port 8080\""
   },
   "repository": {
     "type": "git",
@@ -16,5 +18,9 @@
   "bugs": {
     "url": "https://github.com/zongcong/ar-demo/issues"
   },
-  "homepage": "https://github.com/zongcong/ar-demo#readme"
+  "homepage": "https://github.com/zongcong/ar-demo#readme",
+  "devDependencies": {
+    "concurrently": "^7.2.2",
+    "localtunnel": "^2.0.2"
+  }
 }
